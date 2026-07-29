@@ -14,6 +14,8 @@ typedef struct {
     int16_t previousError;
     int16_t derivative;
     int16_t correction;
+    int16_t pendingCorrection;
+    uint8_t correctionConfirmMs;
 } HLineControl;
 
 void h_line_control_init(HLineControl *control);

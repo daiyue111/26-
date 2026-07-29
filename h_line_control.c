@@ -31,6 +31,8 @@ void h_line_control_reset(HLineControl *control)
     control->previousError = 0;
     control->derivative = 0;
     control->correction = 0;
+    control->pendingCorrection = 0;
+    control->correctionConfirmMs = 0U;
 }
 
 void h_line_control_init(HLineControl *control)
@@ -45,6 +47,7 @@ void h_line_control_update_1ms(HLineControl *control, uint8_t blackMask,
     int16_t requested;
     int16_t kp;
     int16_t kd;
+    bool immediateCorrection = false;
 
     if (control == NULL) {
         return;
@@ -61,9 +64,12 @@ void h_line_control_update_1ms(HLineControl *control, uint8_t blackMask,
             (rawError >= H_LINE_LARGE_ERROR) ||
             (rawError <= -H_LINE_LARGE_ERROR)) {
             control->filteredErrorX4 = (int16_t)(rawError * 4);
+            immediateCorrection = (rawError >= H_LINE_LARGE_ERROR) ||
+                (rawError <= -H_LINE_LARGE_ERROR);
         } else {
             control->filteredErrorX4 = (int16_t)(
-                (control->filteredErrorX4 + rawError * 4) / 2);
+                ((int32_t)control->filteredErrorX4 * 3 +
+                    (int32_t)rawError * 4) / 4);
         }
         control->error = (int16_t)(control->filteredErrorX4 / 4);
         control->derivative = control->error - control->previousError;
@@ -92,12 +98,33 @@ void h_line_control_update_1ms(HLineControl *control, uint8_t blackMask,
             requested = control->correction;
         } else if (control->lastVisibleError > 0) {
             requested = H_LINE_RECOVERY_CORRECTION_TICKS;
+            immediateCorrection = true;
         } else if (control->lastVisibleError < 0) {
             requested = -H_LINE_RECOVERY_CORRECTION_TICKS;
+            immediateCorrection = true;
         } else {
             requested = control->correction;
         }
     }
+    if (curveMode && !immediateCorrection &&
+        (requested != control->correction)) {
+        if (requested != control->pendingCorrection) {
+            control->pendingCorrection = requested;
+            control->correctionConfirmMs = LINE_CONTROL_PERIOD_MS;
+            return;
+        }
+        if (control->correctionConfirmMs <
+            H_CURVE_CORRECTION_CONFIRM_MS) {
+            control->correctionConfirmMs = (uint8_t)(
+                control->correctionConfirmMs + LINE_CONTROL_PERIOD_MS);
+        }
+        if (control->correctionConfirmMs <
+            H_CURVE_CORRECTION_CONFIRM_MS) {
+            return;
+        }
+    }
+    control->pendingCorrection = requested;
+    control->correctionConfirmMs = 0U;
     if (requested > control->correction) {
         control->correction += H_LINE_CORRECTION_SLEW_TICKS;
         if (control->correction > requested) {
