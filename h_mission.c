@@ -118,12 +118,23 @@ static int16_t route_speed_target(void)
 {
 #if H_TEMP_TRACK_TUNING_MODE
     int16_t lineError = gH.line.error;
+    int32_t firstCurveEnd = H_ROUTE_AB_MM + H_ROUTE_HALF_CIRCLE_MM;
+    bool routeCurve =
+        ((gH.distanceMm >= (H_ROUTE_AB_MM -
+                H_TUNING_CURVE_APPROACH_MM)) &&
+         (gH.distanceMm < (firstCurveEnd +
+                H_TUNING_CURVE_EXIT_MARGIN_MM))) ||
+        (gH.distanceMm >= (H_ROUTE_CD_END_MM -
+                H_TUNING_CURVE_APPROACH_MM));
 
     if (gH.state == H_STATE_PASS_FINISH) {
         return H_FINISH_APPROACH_SPEED_TICKS;
     }
     if (!gH.line.lineVisible) {
         return H_LINE_LOST_SPEED_TICKS;
+    }
+    if (routeCurve) {
+        return H_TUNING_CURVE_SPEED_TICKS;
     }
     if (lineError < 0) {
         lineError = (int16_t)-lineError;
