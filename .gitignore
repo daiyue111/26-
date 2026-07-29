@@ -1,0 +1,22 @@
+# Keil build intermediates; keep the tested firmware image.
+Objects/*
+!Objects/empty_mspm0g3507.hex
+Listings/
+*.map
+*.dep
+*.d
+*.o
+*.axf
+*.lnp
+*.build_log.htm
+
+# Per-user IDE state and backups.
+*.uvguix.*
+*.bak
+Backup*/
+
+# Python cache and common editor files.
+__pycache__/
+*.pyc
+.vscode/
+.idea/

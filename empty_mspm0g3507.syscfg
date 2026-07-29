@@ -1,0 +1,203 @@
+/**
+ * 8-channel digital line sensor diagnostic configuration.
+ * OUT1..OUT8 use the wiring preserved from the previous autocar project.
+ */
+//@cliArgs --device "MSPM0G350X" --package "LQFP-64(PM)" --part "Default"
+//@v2CliArgs --device "MSPM0G3507" --package "LQFP-64(PM)"
+// @cliArgs --board /ti/boards/LP_MSPM0G3507 --rtos nortos
+
+const GPIO       = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const trackA     = GPIO.addInstance();
+const trackB     = GPIO.addInstance();
+const debugLed   = GPIO.addInstance();
+const gyroLed    = GPIO.addInstance();
+const startKey   = GPIO.addInstance();
+const powerSwitch = GPIO.addInstance();
+const encoder    = GPIO.addInstance();
+const motorA     = GPIO.addInstance();
+const motorB     = GPIO.addInstance();
+const SYSCTL     = scripting.addModule("/ti/driverlib/SYSCTL");
+
+trackA.$name = "GPIO_TRACK_A";
+trackA.port = "PORTA";
+trackA.associatedPins.create(5);
+
+trackA.associatedPins[0].$name = "X1";
+trackA.associatedPins[0].direction = "INPUT";
+trackA.associatedPins[0].assignedPin = "26";
+trackA.associatedPins[0].pin.$assign = "PA26";
+
+trackA.associatedPins[1].$name = "X2";
+trackA.associatedPins[1].direction = "INPUT";
+trackA.associatedPins[1].assignedPin = "27";
+trackA.associatedPins[1].pin.$assign = "PA27";
+
+trackA.associatedPins[2].$name = "X3";
+trackA.associatedPins[2].direction = "INPUT";
+trackA.associatedPins[2].assignedPin = "24";
+trackA.associatedPins[2].pin.$assign = "PA24";
+
+trackA.associatedPins[3].$name = "X4";
+trackA.associatedPins[3].direction = "INPUT";
+trackA.associatedPins[3].assignedPin = "25";
+trackA.associatedPins[3].pin.$assign = "PA25";
+
+trackA.associatedPins[4].$name = "X7";
+trackA.associatedPins[4].direction = "INPUT";
+trackA.associatedPins[4].assignedPin = "22";
+trackA.associatedPins[4].pin.$assign = "PA22";
+
+trackB.$name = "GPIO_TRACK_B";
+trackB.port = "PORTB";
+trackB.associatedPins.create(3);
+
+trackB.associatedPins[0].$name = "X5";
+trackB.associatedPins[0].direction = "INPUT";
+trackB.associatedPins[0].assignedPin = "24";
+trackB.associatedPins[0].pin.$assign = "PB24";
+
+trackB.associatedPins[1].$name = "X6";
+trackB.associatedPins[1].direction = "INPUT";
+trackB.associatedPins[1].assignedPin = "25";
+trackB.associatedPins[1].pin.$assign = "PB25";
+
+trackB.associatedPins[2].$name = "X8";
+trackB.associatedPins[2].direction = "INPUT";
+trackB.associatedPins[2].assignedPin = "20";
+trackB.associatedPins[2].pin.$assign = "PB20";
+
+debugLed.$name = "GPIO_DEBUG_LED";
+debugLed.associatedPins[0].$name = "LED";
+debugLed.associatedPins[0].assignedPort = "PORTB";
+debugLed.associatedPins[0].assignedPin = "18";
+debugLed.associatedPins[0].initialValue = "CLEARED";
+debugLed.associatedPins[0].pin.$assign = "PB18";
+
+gyroLed.$name = "GPIO_GYRO_LED";
+gyroLed.associatedPins[0].$name = "STATUS_LED";
+gyroLed.associatedPins[0].assignedPort = "PORTA";
+gyroLed.associatedPins[0].assignedPin = "0";
+gyroLed.associatedPins[0].initialValue = "CLEARED";
+gyroLed.associatedPins[0].pin.$assign = "PA0";
+
+startKey.$name = "GPIO_START_KEY";
+startKey.associatedPins[0].$name = "KEY";
+startKey.associatedPins[0].direction = "INPUT";
+startKey.associatedPins[0].internalResistor = "PULL_UP";
+startKey.associatedPins[0].assignedPort = "PORTA";
+startKey.associatedPins[0].assignedPin = "9";
+startKey.associatedPins[0].pin.$assign = "PA9";
+
+powerSwitch.$name = "GPIO_POWER_SWITCH";
+powerSwitch.associatedPins[0].$name = "CONTROL";
+powerSwitch.associatedPins[0].assignedPort = "PORTB";
+powerSwitch.associatedPins[0].assignedPin = "16";
+powerSwitch.associatedPins[0].initialValue = "CLEARED";
+powerSwitch.associatedPins[0].pin.$assign = "PB16";
+
+encoder.$name = "GPIO_ENCODER";
+encoder.associatedPins.create(4);
+
+encoder.associatedPins[0].$name = "LEFT_A";
+encoder.associatedPins[0].direction = "INPUT";
+encoder.associatedPins[0].internalResistor = "PULL_UP";
+encoder.associatedPins[0].interruptEn = true;
+encoder.associatedPins[0].polarity = "RISE_FALL";
+encoder.associatedPins[0].pin.$assign = "PB23";
+
+encoder.associatedPins[1].$name = "LEFT_B";
+encoder.associatedPins[1].direction = "INPUT";
+encoder.associatedPins[1].internalResistor = "PULL_UP";
+encoder.associatedPins[1].pin.$assign = "PB27";
+
+encoder.associatedPins[2].$name = "RIGHT_A";
+encoder.associatedPins[2].direction = "INPUT";
+encoder.associatedPins[2].internalResistor = "PULL_UP";
+encoder.associatedPins[2].interruptEn = true;
+encoder.associatedPins[2].polarity = "RISE_FALL";
+// PA18 invokes the ROM BSL when high during reset, so an encoder signal there
+// makes application startup depend on the wheel's resting phase.
+encoder.associatedPins[2].pin.$assign = "PA21";
+
+encoder.associatedPins[3].$name = "RIGHT_B";
+encoder.associatedPins[3].direction = "INPUT";
+encoder.associatedPins[3].internalResistor = "PULL_UP";
+encoder.associatedPins[3].pin.$assign = "PB22";
+
+motorA.$name = "GPIO_MOTOR_A";
+motorA.port = "PORTA";
+motorA.associatedPins.create(4);
+
+motorA.associatedPins[0].$name = "BIN1";
+motorA.associatedPins[0].assignedPin = "13";
+motorA.associatedPins[0].initialValue = "CLEARED";
+motorA.associatedPins[0].pin.$assign = "PA13";
+
+motorA.associatedPins[1].$name = "BIN2";
+motorA.associatedPins[1].assignedPin = "12";
+motorA.associatedPins[1].initialValue = "CLEARED";
+motorA.associatedPins[1].pin.$assign = "PA12";
+
+motorA.associatedPins[2].$name = "CIN1";
+motorA.associatedPins[2].assignedPin = "10";
+motorA.associatedPins[2].initialValue = "CLEARED";
+motorA.associatedPins[2].pin.$assign = "PA10";
+
+motorA.associatedPins[3].$name = "CIN2";
+motorA.associatedPins[3].assignedPin = "11";
+motorA.associatedPins[3].initialValue = "CLEARED";
+motorA.associatedPins[3].pin.$assign = "PA11";
+
+motorB.$name = "GPIO_MOTOR_B";
+motorB.port = "PORTB";
+motorB.associatedPins.create(9);
+
+motorB.associatedPins[0].$name = "STBY";
+motorB.associatedPins[0].assignedPin = "7";
+motorB.associatedPins[0].initialValue = "CLEARED";
+motorB.associatedPins[0].pin.$assign = "PB7";
+
+motorB.associatedPins[1].$name = "AIN1";
+motorB.associatedPins[1].assignedPin = "6";
+motorB.associatedPins[1].initialValue = "CLEARED";
+motorB.associatedPins[1].pin.$assign = "PB6";
+
+motorB.associatedPins[2].$name = "AIN2";
+motorB.associatedPins[2].assignedPin = "9";
+motorB.associatedPins[2].initialValue = "CLEARED";
+motorB.associatedPins[2].pin.$assign = "PB9";
+
+motorB.associatedPins[3].$name = "PWMA";
+motorB.associatedPins[3].assignedPin = "8";
+motorB.associatedPins[3].initialValue = "CLEARED";
+motorB.associatedPins[3].pin.$assign = "PB8";
+
+motorB.associatedPins[4].$name = "PWMB";
+motorB.associatedPins[4].assignedPin = "26";
+motorB.associatedPins[4].initialValue = "CLEARED";
+motorB.associatedPins[4].pin.$assign = "PB26";
+
+motorB.associatedPins[5].$name = "PWMC";
+motorB.associatedPins[5].assignedPin = "12";
+motorB.associatedPins[5].initialValue = "CLEARED";
+motorB.associatedPins[5].pin.$assign = "PB12";
+
+motorB.associatedPins[6].$name = "DIN1";
+motorB.associatedPins[6].assignedPin = "13";
+motorB.associatedPins[6].initialValue = "CLEARED";
+motorB.associatedPins[6].pin.$assign = "PB13";
+
+motorB.associatedPins[7].$name = "DIN2";
+motorB.associatedPins[7].assignedPin = "3";
+motorB.associatedPins[7].initialValue = "CLEARED";
+motorB.associatedPins[7].pin.$assign = "PB3";
+
+motorB.associatedPins[8].$name = "PWMD";
+motorB.associatedPins[8].assignedPin = "2";
+motorB.associatedPins[8].initialValue = "CLEARED";
+motorB.associatedPins[8].pin.$assign = "PB2";
+
+SYSCTL.forceDefaultClkConfig = true;
+SYSCTL.clockTreeEn = true;
+
+const Board = scripting.addModule("/ti/driverlib/Board", {}, false);
