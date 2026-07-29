@@ -18,7 +18,8 @@ typedef struct {
 
 void h_line_control_init(HLineControl *control);
 void h_line_control_reset(HLineControl *control);
-void h_line_control_update_1ms(HLineControl *control, uint8_t blackMask);
+void h_line_control_update_1ms(HLineControl *control, uint8_t blackMask,
+    bool curveMode);
 void h_line_control_command(const HLineControl *control,
     int16_t forwardSpeedTicks, int16_t steeringFeedforwardTicks);
 

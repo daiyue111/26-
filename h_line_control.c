@@ -38,10 +38,13 @@ void h_line_control_init(HLineControl *control)
     h_line_control_reset(control);
 }
 
-void h_line_control_update_1ms(HLineControl *control, uint8_t blackMask)
+void h_line_control_update_1ms(HLineControl *control, uint8_t blackMask,
+    bool curveMode)
 {
     int16_t rawError;
     int16_t requested;
+    int16_t kp;
+    int16_t kd;
 
     if (control == NULL) {
         return;
@@ -71,8 +74,10 @@ void h_line_control_update_1ms(HLineControl *control, uint8_t blackMask)
         control->lineVisible = true;
         control->lostMs = 0U;
 
-        requested = clamp_i16(((int32_t)H_LINE_KP * control->error +
-            (int32_t)H_LINE_KD * control->derivative) / H_LINE_SCALE,
+        kp = curveMode ? H_LINE_CURVE_KP : H_LINE_STRAIGHT_KP;
+        kd = curveMode ? H_LINE_CURVE_KD : H_LINE_STRAIGHT_KD;
+        requested = clamp_i16(((int32_t)kp * control->error +
+            (int32_t)kd * control->derivative) / H_LINE_SCALE,
             H_LINE_CORRECTION_LIMIT_TICKS);
     } else {
         control->lineVisible = false;
