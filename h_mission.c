@@ -230,9 +230,11 @@ static bool update_finish_marker(uint8_t blackMask)
     bool marker = track_active_count(blackMask) >=
         H_MARKER_MIN_ACTIVE_SENSORS;
 #if H_TEMP_TRACK_TUNING_MODE
-    const int32_t markerMinDistanceMm = H_TUNING_MARKER_MIN_DISTANCE_MM;
+    bool markerArmEligible = true;
+    bool finishEligible = gH.stateMs >= H_TUNING_MARKER_MIN_TIME_MS;
 #else
-    const int32_t markerMinDistanceMm = H_MARKER_MIN_LAP_DISTANCE_MM;
+    bool markerArmEligible = gH.distanceMm >= H_MARKER_ARM_DISTANCE_MM;
+    bool finishEligible = gH.distanceMm >= H_MARKER_MIN_LAP_DISTANCE_MM;
 #endif
 
     if (!gH.markerArmed) {
@@ -241,7 +243,7 @@ static bool update_finish_marker(uint8_t blackMask)
                 gH.markerClearMs++;
             }
             if ((gH.markerClearMs >= H_MARKER_CLEAR_MS) &&
-                (gH.distanceMm >= H_MARKER_ARM_DISTANCE_MM)) {
+                markerArmEligible) {
                 gH.markerArmed = true;
             }
         } else {
@@ -250,7 +252,7 @@ static bool update_finish_marker(uint8_t blackMask)
         return false;
     }
 
-    if ((gH.distanceMm >= markerMinDistanceMm) && marker) {
+    if (finishEligible && marker) {
         if (gH.markerDebounceMs < H_MARKER_DEBOUNCE_MS) {
             gH.markerDebounceMs++;
         }

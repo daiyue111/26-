@@ -57,19 +57,16 @@
 #define H_TASK_LAP_ARBITRARY_BALL 6U
 #define H_DEFAULT_TASK H_TASK_CAR_LAP_STOP
 
-/* Keep this enabled while testing on the joined 2024 H field.  In this
- * profile the chassis follows only the measured line and does not assume
- * that a curve starts at a 2026 H distance.  Set it to 0 on the official
- * field, then calibrate the route distances and curve feedforward. */
+/* H2 pure line-following profile. Route distance is telemetry only. */
 #define H_TEMP_TRACK_TUNING_MODE 1U
-#define H_TUNING_STRAIGHT_SPEED_TICKS 4
-#define H_TUNING_MEDIUM_SPEED_TICKS 4
-#define H_TUNING_CURVE_SPEED_TICKS 3
+#define H_TUNING_STRAIGHT_SPEED_TICKS 6
+#define H_TUNING_MEDIUM_SPEED_TICKS 5
+#define H_TUNING_CURVE_SPEED_TICKS 4
 #define H_TUNING_MEDIUM_ERROR 3
 #define H_TUNING_LARGE_ERROR 5
 #define H_TUNING_DECEL_STEP_MS 30U
-#define H_TUNING_AUTO_FINISH_ENABLE 0U
-#define H_TUNING_MARKER_MIN_DISTANCE_MM 1000
+#define H_TUNING_AUTO_FINISH_ENABLE 1U
+#define H_TUNING_MARKER_MIN_TIME_MS 5000U
 #define H_TUNING_TIMEOUT_MS 120000U
 
 #define H_ROUTE_AB_MM 1500
@@ -84,8 +81,8 @@
 
 #define H_FAST_STRAIGHT_SPEED_TICKS 8
 #define H_FAST_CURVE_SPEED_TICKS 5
-#define H_STABLE_STRAIGHT_SPEED_TICKS 6
-#define H_STABLE_CURVE_SPEED_TICKS 4
+#define H_STABLE_STRAIGHT_SPEED_TICKS 4
+#define H_STABLE_CURVE_SPEED_TICKS 3
 #define H_FINISH_APPROACH_SPEED_TICKS 2
 #define H_FAST_RAMP_STEP_MS 180U
 #define H_STABLE_RAMP_STEP_MS 450U
@@ -101,8 +98,8 @@
 #define H_LINE_RECOVERY_CORRECTION_TICKS 2
 #define H_LINE_MIN_VISIBLE_WHEEL_SPEED_TICKS 1
 #define H_LINE_RECOVERY_START_MS 45U
-#define H_CURVE_STEERING_FEEDFORWARD_TICKS (-1)
-#define H_CURVE_STEERING_EXTRA_TICKS (-1)
+#define H_CURVE_STEERING_FEEDFORWARD_TICKS 0
+#define H_CURVE_STEERING_EXTRA_TICKS 0
 #define H_LINE_LOST_TIMEOUT_MS 600U
 
 /* The main array recognizes the transverse A line until two extra sensors

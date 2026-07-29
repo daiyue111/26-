@@ -12,25 +12,20 @@ The source project and the `ec084bb` competition baseline are unchanged.
 - The existing motor, encoder, line sensor, start key, and power pins are
   unchanged.
 
-## Temporary Track Profile
+## H2 Pure Line Profile
 
-`H_TEMP_TRACK_TUNING_MODE` is currently `1` because the available field is a
-joined 2024 H track rather than the official 2026 H stadium. In this mode:
+H2 uses continuous line following on the official field. Route distance,
+gyro curve detection, and curve feedforward are not part of the H2 control
+loop. The current profile uses 6/5/4 ticks for small/medium/large line error.
+It validates:
 
-- speed is selected from the measured line error, currently 4/4/3 ticks;
-- large errors decelerate faster than the car accelerates;
-- visible-line steering keeps both wheels moving instead of pivoting around
-  a stopped inside wheel;
-- line gaps shorter than 45 ms keep the previous steering command;
-- distance-based curve approach and steering feedforward are disabled;
-- the 6.142 m route-overrun fault is disabled;
-- automatic finish-marker stopping is disabled because the joined 2024 H
-  field contains unrelated transverse lines; press the start key to stop.
+- continuous line following through both semicircles;
+- return-to-A marker recognition after leaving the start marker and running
+  for at least 5 seconds;
+- final approach and active braking.
 
-This profile is for tuning sensor polarity, filtering, speed PI, line PD,
-recovery, and marker recognition. Set the macro to `0` only on an accurately
-constructed official field, then calibrate route distances, curve speed,
-feedforward, and final braking distance.
+Encoder distance remains telemetry only. Increase the three speed levels
+only after this profile completes repeatable laps.
 
 ## Runtime Selection
 
