@@ -13,6 +13,7 @@ const debugLed   = GPIO.addInstance();
 const gyroLed    = GPIO.addInstance();
 const startKey   = GPIO.addInstance();
 const powerSwitch = GPIO.addInstance();
+const lcd         = GPIO.addInstance();
 const encoder    = GPIO.addInstance();
 const motorA     = GPIO.addInstance();
 const motorB     = GPIO.addInstance();
@@ -94,6 +95,27 @@ powerSwitch.associatedPins[0].assignedPort = "PORTB";
 powerSwitch.associatedPins[0].assignedPin = "16";
 powerSwitch.associatedPins[0].initialValue = "CLEARED";
 powerSwitch.associatedPins[0].pin.$assign = "PB16";
+
+lcd.$name = "GPIO_LCD";
+lcd.associatedPins.create(3);
+
+lcd.associatedPins[0].$name = "SCLK";
+lcd.associatedPins[0].assignedPort = "PORTA";
+lcd.associatedPins[0].assignedPin = "1";
+lcd.associatedPins[0].initialValue = "SET";
+lcd.associatedPins[0].pin.$assign = "PA1";
+
+lcd.associatedPins[1].$name = "MOSI";
+lcd.associatedPins[1].assignedPort = "PORTA";
+lcd.associatedPins[1].assignedPin = "2";
+lcd.associatedPins[1].initialValue = "SET";
+lcd.associatedPins[1].pin.$assign = "PA2";
+
+lcd.associatedPins[2].$name = "DC";
+lcd.associatedPins[2].assignedPort = "PORTB";
+lcd.associatedPins[2].assignedPin = "17";
+lcd.associatedPins[2].initialValue = "SET";
+lcd.associatedPins[2].pin.$assign = "PB17";
 
 encoder.$name = "GPIO_ENCODER";
 encoder.associatedPins.create(4);

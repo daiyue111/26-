@@ -664,6 +664,16 @@
               <FileType>5</FileType>
               <FilePath>zdt_stepper.h</FilePath>
             </File>
+            <File>
+              <FileName>lcd_display.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>lcd_display.c</FilePath>
+            </File>
+            <File>
+              <FileName>lcd_display.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>lcd_display.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

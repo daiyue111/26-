@@ -139,66 +139,17 @@ static bool route_curve_active(void)
 static int16_t route_speed_target(void)
 {
 #if H_TEMP_TRACK_TUNING_MODE
-    int16_t lineError = gH.line.error;
     bool routeCurve = route_curve_active();
 
     if (gH.state == H_STATE_PASS_FINISH) {
         return H_FINISH_APPROACH_SPEED_TICKS;
     }
-    if (lineError < 0) {
-        lineError = (int16_t)-lineError;
-    }
     if (!gH.line.lineVisible) {
-        gH.speedMediumErrorMs = 0U;
-        gH.speedLargeErrorMs = 0U;
-        gH.speedCenteredMs = 0U;
         if (gH.line.lostMs >= H_LINE_SPEED_REDUCTION_START_MS) {
             return H_LINE_LOST_SPEED_TICKS;
         }
-        return routeCurve ? H_TUNING_CURVE_SPEED_TICKS :
-            (gH.straightSlowMode ? H_TUNING_MEDIUM_SPEED_TICKS :
-                H_TUNING_STRAIGHT_SPEED_TICKS);
     }
-    if (routeCurve) {
-        gH.speedMediumErrorMs = 0U;
-        gH.speedLargeErrorMs = 0U;
-        gH.speedCenteredMs = 0U;
-        gH.straightSlowMode = false;
-        return H_TUNING_CURVE_SPEED_TICKS;
-    }
-    if (lineError >= H_TUNING_LARGE_ERROR) {
-        gH.speedMediumErrorMs = 0U;
-        gH.speedCenteredMs = 0U;
-        if (gH.speedLargeErrorMs < H_TUNING_LARGE_ERROR_CONFIRM_MS) {
-            gH.speedLargeErrorMs++;
-        }
-        if (gH.speedLargeErrorMs >= H_TUNING_LARGE_ERROR_CONFIRM_MS) {
-            gH.straightSlowMode = true;
-        }
-    } else if (lineError >= H_TUNING_MEDIUM_ERROR) {
-        gH.speedLargeErrorMs = 0U;
-        gH.speedCenteredMs = 0U;
-        if (gH.speedMediumErrorMs < H_TUNING_MEDIUM_ERROR_CONFIRM_MS) {
-            gH.speedMediumErrorMs++;
-        }
-        if (gH.speedMediumErrorMs >= H_TUNING_MEDIUM_ERROR_CONFIRM_MS) {
-            gH.straightSlowMode = true;
-        }
-    } else if (lineError <= H_TUNING_CENTERED_ERROR) {
-        gH.speedMediumErrorMs = 0U;
-        gH.speedLargeErrorMs = 0U;
-        if (gH.speedCenteredMs < H_TUNING_CENTERED_CONFIRM_MS) {
-            gH.speedCenteredMs++;
-        }
-        if (gH.speedCenteredMs >= H_TUNING_CENTERED_CONFIRM_MS) {
-            gH.straightSlowMode = false;
-        }
-    } else {
-        gH.speedMediumErrorMs = 0U;
-        gH.speedLargeErrorMs = 0U;
-        gH.speedCenteredMs = 0U;
-    }
-    return gH.straightSlowMode ? H_TUNING_MEDIUM_SPEED_TICKS :
+    return routeCurve ? H_TUNING_CURVE_SPEED_TICKS :
         H_TUNING_STRAIGHT_SPEED_TICKS;
 #else
     bool fast = gH.task == H_TASK_CAR_LAP_STOP;

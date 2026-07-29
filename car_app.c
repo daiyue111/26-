@@ -12,6 +12,7 @@
 #include "h_mission.h"
 #include "imu.h"
 #include "line_follow.h"
+#include "lcd_display.h"
 #include "motion_control.h"
 #include "motor.h"
 #include "power_switch.h"
@@ -113,6 +114,7 @@ typedef struct {
     uint16_t startBoostMs;
     uint8_t testStep;
     uint32_t testStepMs;
+    bool hResultDisplayed;
     LineFollowState line;
 } CarAppState;
 
@@ -295,6 +297,7 @@ static void start_line_following(void)
     uint8_t blackMask = track_black_mask(track_read_raw_mask());
 
     motor_safe_stop();
+    gApp.hResultDisplayed = false;
     gApp.running = h_mission_start(control_scheduler_now_ms(), blackMask);
 #else
     bool imuReady;
@@ -654,6 +657,12 @@ static void run_h2026_step(void)
     if ((state == H_STATE_COMPLETE) || (state == H_STATE_FAULT)) {
         gApp.running = false;
     }
+#if APP_ENABLE_LCD
+    if ((state == H_STATE_COMPLETE) && !gApp.hResultDisplayed) {
+        lcd_display_show_time_ms(h_mission_get_result_ms());
+        gApp.hResultDisplayed = true;
+    }
+#endif
 
     gLineRunning = gApp.running ? 1U : 0U;
     app_debug_led_set(gApp.running);
@@ -750,6 +759,11 @@ void car_app_init(void)
     motion_control_init();
     square_mission_init();
     h_mission_init();
+#if APP_ENABLE_LCD
+    lcd_display_init();
+    lcd_display_show_time_ms(0U);
+    gApp.hResultDisplayed = true;
+#endif
     gHRequestedTask = H_DEFAULT_TASK;
     gHRequestedTargetTenthMm = 0;
     chassis_calibration_init(gStoredCalibrationValid ?

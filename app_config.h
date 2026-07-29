@@ -14,6 +14,7 @@
 #define APP_MODE_CHASSIS_CALIBRATION 5U
 #define APP_MODE_H2026 6U
 #define APP_RUN_MODE APP_MODE_H2026
+#define APP_ENABLE_LCD 1U
 
 /* Optional X42S closed-loop stepper driver; disabled to preserve car pins. */
 #define APP_ENABLE_ZDT_X42S 0U
@@ -59,7 +60,7 @@
 
 /* H2 route-aware speed scheduling with sensor-closed-loop steering. */
 #define H_TEMP_TRACK_TUNING_MODE 1U
-#define H_TUNING_STRAIGHT_SPEED_TICKS 18
+#define H_TUNING_STRAIGHT_SPEED_TICKS 20
 #define H_TUNING_MEDIUM_SPEED_TICKS 11
 #define H_TUNING_CURVE_SPEED_TICKS 10
 #define H_TUNING_CENTERED_ERROR 1

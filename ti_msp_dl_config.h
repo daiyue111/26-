@@ -133,6 +133,18 @@ extern "C" {
 /* Defines for X8: GPIOB.20 with pinCMx 48 on package pin 19 */
 #define GPIO_TRACK_B_X8_PIN                                     (DL_GPIO_PIN_20)
 #define GPIO_TRACK_B_X8_IOMUX                                    (IOMUX_PINCM48)
+/* Defines for SCLK: GPIOA.1 with pinCMx 2 on package pin 34 */
+#define GPIO_LCD_SCLK_PORT                                               (GPIOA)
+#define GPIO_LCD_SCLK_PIN                                        (DL_GPIO_PIN_1)
+#define GPIO_LCD_SCLK_IOMUX                                       (IOMUX_PINCM2)
+/* Defines for MOSI: GPIOA.2 with pinCMx 7 on package pin 42 */
+#define GPIO_LCD_MOSI_PORT                                               (GPIOA)
+#define GPIO_LCD_MOSI_PIN                                        (DL_GPIO_PIN_2)
+#define GPIO_LCD_MOSI_IOMUX                                       (IOMUX_PINCM7)
+/* Defines for DC: GPIOB.17 with pinCMx 43 on package pin 14 */
+#define GPIO_LCD_DC_PORT                                                 (GPIOB)
+#define GPIO_LCD_DC_PIN                                         (DL_GPIO_PIN_17)
+#define GPIO_LCD_DC_IOMUX                                        (IOMUX_PINCM43)
 /* Defines for LEFT_A: GPIOB.23 with pinCMx 51 on package pin 22 */
 #define GPIO_ENCODER_LEFT_A_PORT                                         (GPIOB)
 // pins affected by this interrupt request:["LEFT_A"]
