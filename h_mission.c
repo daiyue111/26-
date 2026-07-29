@@ -21,8 +21,12 @@ typedef struct {
     uint16_t ballFaultMs;
     uint16_t settleMs;
     uint16_t speedRampMs;
+    uint16_t speedMediumErrorMs;
+    uint16_t speedLargeErrorMs;
+    uint16_t speedCenteredMs;
     uint8_t lineMaskHistory1;
     uint8_t lineMaskHistory2;
+    bool straightSlowMode;
     uint32_t startMs;
     uint32_t resultMs;
     int32_t startCount;
@@ -141,23 +145,61 @@ static int16_t route_speed_target(void)
     if (gH.state == H_STATE_PASS_FINISH) {
         return H_FINISH_APPROACH_SPEED_TICKS;
     }
-    if (!gH.line.lineVisible &&
-        (gH.line.lostMs >= H_LINE_RECOVERY_START_MS)) {
-        return H_LINE_LOST_SPEED_TICKS;
-    }
-    if (routeCurve) {
-        return H_TUNING_CURVE_SPEED_TICKS;
-    }
     if (lineError < 0) {
         lineError = (int16_t)-lineError;
     }
-    if (lineError >= H_TUNING_LARGE_ERROR) {
+    if (!gH.line.lineVisible) {
+        gH.speedMediumErrorMs = 0U;
+        gH.speedLargeErrorMs = 0U;
+        gH.speedCenteredMs = 0U;
+        if (gH.line.lostMs >= H_LINE_SPEED_REDUCTION_START_MS) {
+            return H_LINE_LOST_SPEED_TICKS;
+        }
+        return routeCurve ? H_TUNING_CURVE_SPEED_TICKS :
+            (gH.straightSlowMode ? H_TUNING_MEDIUM_SPEED_TICKS :
+                H_TUNING_STRAIGHT_SPEED_TICKS);
+    }
+    if (routeCurve) {
+        gH.speedMediumErrorMs = 0U;
+        gH.speedLargeErrorMs = 0U;
+        gH.speedCenteredMs = 0U;
+        gH.straightSlowMode = false;
         return H_TUNING_CURVE_SPEED_TICKS;
     }
-    if (lineError >= H_TUNING_MEDIUM_ERROR) {
-        return H_TUNING_MEDIUM_SPEED_TICKS;
+    if (lineError >= H_TUNING_LARGE_ERROR) {
+        gH.speedMediumErrorMs = 0U;
+        gH.speedCenteredMs = 0U;
+        if (gH.speedLargeErrorMs < H_TUNING_LARGE_ERROR_CONFIRM_MS) {
+            gH.speedLargeErrorMs++;
+        }
+        if (gH.speedLargeErrorMs >= H_TUNING_LARGE_ERROR_CONFIRM_MS) {
+            gH.straightSlowMode = true;
+        }
+    } else if (lineError >= H_TUNING_MEDIUM_ERROR) {
+        gH.speedLargeErrorMs = 0U;
+        gH.speedCenteredMs = 0U;
+        if (gH.speedMediumErrorMs < H_TUNING_MEDIUM_ERROR_CONFIRM_MS) {
+            gH.speedMediumErrorMs++;
+        }
+        if (gH.speedMediumErrorMs >= H_TUNING_MEDIUM_ERROR_CONFIRM_MS) {
+            gH.straightSlowMode = true;
+        }
+    } else if (lineError <= H_TUNING_CENTERED_ERROR) {
+        gH.speedMediumErrorMs = 0U;
+        gH.speedLargeErrorMs = 0U;
+        if (gH.speedCenteredMs < H_TUNING_CENTERED_CONFIRM_MS) {
+            gH.speedCenteredMs++;
+        }
+        if (gH.speedCenteredMs >= H_TUNING_CENTERED_CONFIRM_MS) {
+            gH.straightSlowMode = false;
+        }
+    } else {
+        gH.speedMediumErrorMs = 0U;
+        gH.speedLargeErrorMs = 0U;
+        gH.speedCenteredMs = 0U;
     }
-    return H_TUNING_STRAIGHT_SPEED_TICKS;
+    return gH.straightSlowMode ? H_TUNING_MEDIUM_SPEED_TICKS :
+        H_TUNING_STRAIGHT_SPEED_TICKS;
 #else
     bool fast = gH.task == H_TASK_CAR_LAP_STOP;
     int16_t straight = fast ? H_FAST_STRAIGHT_SPEED_TICKS :
@@ -473,6 +515,10 @@ bool h_mission_start(uint32_t nowMs, uint8_t blackMask)
     gH.currentSpeedTicks = 0;
     gH.targetSpeedTicks = 0;
     gH.speedRampMs = speed_ramp_step_ms();
+    gH.speedMediumErrorMs = 0U;
+    gH.speedLargeErrorMs = 0U;
+    gH.speedCenteredMs = 0U;
+    gH.straightSlowMode = false;
     gH.lineMaskHistory1 = blackMask;
     gH.lineMaskHistory2 = blackMask;
     gH.accelerationMmps2 = 0;

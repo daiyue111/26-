@@ -122,7 +122,7 @@ void h_line_control_command(const HLineControl *control,
         return;
     }
     if (!control->lineVisible &&
-        (control->lostMs >= H_LINE_RECOVERY_START_MS)) {
+        (control->lostMs >= H_LINE_SPEED_REDUCTION_START_MS)) {
         if (forwardSpeedTicks > H_LINE_LOST_SPEED_TICKS) {
             forwardSpeedTicks = H_LINE_LOST_SPEED_TICKS;
         }
