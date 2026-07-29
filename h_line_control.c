@@ -63,7 +63,7 @@ void h_line_control_update_1ms(HLineControl *control, uint8_t blackMask,
             control->filteredErrorX4 = (int16_t)(rawError * 4);
         } else if (!curveMode) {
             control->filteredErrorX4 = (int16_t)(
-                (control->filteredErrorX4 * 3 + rawError * 4) / 4);
+                (control->filteredErrorX4 * 7 + rawError * 4) / 8);
         } else {
             control->filteredErrorX4 = (int16_t)(
                 (control->filteredErrorX4 + rawError * 4) / 2);

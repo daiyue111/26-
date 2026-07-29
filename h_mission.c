@@ -266,14 +266,19 @@ static void update_speed_ramp(void)
 
 static bool update_finish_marker(uint8_t blackMask)
 {
-    bool marker = track_active_count(blackMask) >=
-        H_MARKER_MIN_ACTIVE_SENSORS;
 #if H_TEMP_TRACK_TUNING_MODE
+    bool marker =
+        (track_active_count(blackMask) >=
+            H_TUNING_MARKER_MIN_ACTIVE_SENSORS) &&
+        ((blackMask & LINE_CENTER_MASK) != 0U) &&
+        ((blackMask & H_MARKER_OUTER_SENSOR_MASK) != 0U);
     bool markerArmEligible = gH.distanceMm >= H_MARKER_ARM_DISTANCE_MM;
     bool finishEligible =
         (gH.stateMs >= H_TUNING_MARKER_MIN_TIME_MS) &&
-        (gH.distanceMm >= H_MARKER_MIN_LAP_DISTANCE_MM);
+        (gH.distanceMm >= H_TUNING_MARKER_MIN_LAP_DISTANCE_MM);
 #else
+    bool marker = track_active_count(blackMask) >=
+        H_MARKER_MIN_ACTIVE_SENSORS;
     bool markerArmEligible = gH.distanceMm >= H_MARKER_ARM_DISTANCE_MM;
     bool finishEligible = gH.distanceMm >= H_MARKER_MIN_LAP_DISTANCE_MM;
 #endif
@@ -294,13 +299,25 @@ static bool update_finish_marker(uint8_t blackMask)
     }
 
     if (finishEligible && marker) {
-        if (gH.markerDebounceMs < H_MARKER_DEBOUNCE_MS) {
+        uint16_t debounceMs =
+#if H_TEMP_TRACK_TUNING_MODE
+            H_TUNING_MARKER_DEBOUNCE_MS;
+#else
+            H_MARKER_DEBOUNCE_MS;
+#endif
+        if (gH.markerDebounceMs < debounceMs) {
             gH.markerDebounceMs++;
         }
     } else {
         gH.markerDebounceMs = 0U;
     }
-    if (gH.markerDebounceMs >= H_MARKER_DEBOUNCE_MS) {
+    if (gH.markerDebounceMs >=
+#if H_TEMP_TRACK_TUNING_MODE
+        H_TUNING_MARKER_DEBOUNCE_MS
+#else
+        H_MARKER_DEBOUNCE_MS
+#endif
+    ) {
         gH.markerArmed = false;
         return true;
     }

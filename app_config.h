@@ -73,6 +73,9 @@
 #define H_TUNING_ACCEL_STEP_MS 60U
 #define H_TUNING_AUTO_FINISH_ENABLE 1U
 #define H_TUNING_MARKER_MIN_TIME_MS 5000U
+#define H_TUNING_MARKER_MIN_ACTIVE_SENSORS 3U
+#define H_TUNING_MARKER_MIN_LAP_DISTANCE_MM 5000
+#define H_TUNING_MARKER_DEBOUNCE_MS 6U
 #define H_TUNING_TIMEOUT_MS 120000U
 
 #define H_ROUTE_AB_MM 1500
@@ -112,7 +115,8 @@
 
 /* The main array recognizes the transverse A line until two extra sensors
  * receive their final pin allocation. */
-#define H_MARKER_MIN_ACTIVE_SENSORS 4U
+#define H_MARKER_MIN_ACTIVE_SENSORS 6U
+#define H_MARKER_OUTER_SENSOR_MASK 0xC3U
 #define H_MARKER_CLEAR_MS 40U
 #define H_MARKER_DEBOUNCE_MS 4U
 #define H_MARKER_ARM_DISTANCE_MM 500
