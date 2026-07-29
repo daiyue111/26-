@@ -20,6 +20,8 @@ typedef struct {
     uint16_t rightNoFeedbackMs;
     uint16_t leftDirectionFaultMs;
     uint16_t rightDirectionFaultMs;
+    uint16_t leftOverspeedMs;
+    uint16_t rightOverspeedMs;
     MotionControlFault fault;
     PidController leftPid;
     PidController rightPid;
@@ -91,15 +93,6 @@ static void motion_control_check_feedback(void)
         (gMotion.rightSpeed < 0)) || ((gMotion.rightTarget < 0) &&
         (gMotion.rightSpeed > 0));
 
-    if (abs_i32(gMotion.leftSpeed) > ENCODER_OVERSPEED_TICKS) {
-        gMotion.fault = MOTION_FAULT_LEFT_OVERSPEED;
-        return;
-    }
-    if (abs_i32(gMotion.rightSpeed) > ENCODER_OVERSPEED_TICKS) {
-        gMotion.fault = MOTION_FAULT_RIGHT_OVERSPEED;
-        return;
-    }
-
     update_fault_timer(leftCommanded && (gMotion.leftSpeed == 0),
         &gMotion.leftNoFeedbackMs);
     update_fault_timer(rightCommanded && (gMotion.rightSpeed == 0),
@@ -108,6 +101,12 @@ static void motion_control_check_feedback(void)
         &gMotion.leftDirectionFaultMs);
     update_fault_timer(rightCommanded && rightWrongDirection,
         &gMotion.rightDirectionFaultMs);
+    update_fault_timer(
+        abs_i32(gMotion.leftSpeed) > ENCODER_OVERSPEED_TICKS,
+        &gMotion.leftOverspeedMs);
+    update_fault_timer(
+        abs_i32(gMotion.rightSpeed) > ENCODER_OVERSPEED_TICKS,
+        &gMotion.rightOverspeedMs);
 
     if (gMotion.leftNoFeedbackMs >= ENCODER_NO_FEEDBACK_TIMEOUT_MS) {
         gMotion.fault = MOTION_FAULT_LEFT_NO_FEEDBACK;
@@ -120,6 +119,10 @@ static void motion_control_check_feedback(void)
     } else if (gMotion.rightDirectionFaultMs >=
         ENCODER_DIRECTION_FAULT_MS) {
         gMotion.fault = MOTION_FAULT_RIGHT_DIRECTION;
+    } else if (gMotion.leftOverspeedMs >= ENCODER_OVERSPEED_FAULT_MS) {
+        gMotion.fault = MOTION_FAULT_LEFT_OVERSPEED;
+    } else if (gMotion.rightOverspeedMs >= ENCODER_OVERSPEED_FAULT_MS) {
+        gMotion.fault = MOTION_FAULT_RIGHT_OVERSPEED;
     }
 }
 
@@ -169,6 +172,8 @@ void motion_control_reset(void)
     gMotion.rightNoFeedbackMs = 0U;
     gMotion.leftDirectionFaultMs = 0U;
     gMotion.rightDirectionFaultMs = 0U;
+    gMotion.leftOverspeedMs = 0U;
+    gMotion.rightOverspeedMs = 0U;
     gMotion.fault = MOTION_FAULT_NONE;
     pid_reset(&gMotion.leftPid);
     pid_reset(&gMotion.rightPid);
