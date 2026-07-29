@@ -269,8 +269,10 @@ static bool update_finish_marker(uint8_t blackMask)
     bool marker = track_active_count(blackMask) >=
         H_MARKER_MIN_ACTIVE_SENSORS;
 #if H_TEMP_TRACK_TUNING_MODE
-    bool markerArmEligible = true;
-    bool finishEligible = gH.stateMs >= H_TUNING_MARKER_MIN_TIME_MS;
+    bool markerArmEligible = gH.distanceMm >= H_MARKER_ARM_DISTANCE_MM;
+    bool finishEligible =
+        (gH.stateMs >= H_TUNING_MARKER_MIN_TIME_MS) &&
+        (gH.distanceMm >= H_MARKER_MIN_LAP_DISTANCE_MM);
 #else
     bool markerArmEligible = gH.distanceMm >= H_MARKER_ARM_DISTANCE_MM;
     bool finishEligible = gH.distanceMm >= H_MARKER_MIN_LAP_DISTANCE_MM;

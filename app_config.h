@@ -112,7 +112,7 @@
 
 /* The main array recognizes the transverse A line until two extra sensors
  * receive their final pin allocation. */
-#define H_MARKER_MIN_ACTIVE_SENSORS 6U
+#define H_MARKER_MIN_ACTIVE_SENSORS 4U
 #define H_MARKER_CLEAR_MS 40U
 #define H_MARKER_DEBOUNCE_MS 4U
 #define H_MARKER_ARM_DISTANCE_MM 500
