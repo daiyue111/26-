@@ -27,6 +27,7 @@ typedef struct {
     uint32_t resultMs;
     int32_t startCount;
     int32_t passStartCount;
+    uint32_t finishPassCounts;
     int32_t distanceMm;
     int16_t arbitraryTargetTenthMm;
     int16_t currentSpeedTicks;
@@ -286,13 +287,9 @@ static bool update_finish_marker(uint8_t blackMask)
         (track_active_count(blackMask) >=
             H_TUNING_MARKER_MIN_ACTIVE_SENSORS) &&
         ((blackMask & LINE_CENTER_MASK) != 0U) &&
-        ((blackMask & H_TUNING_MARKER_X1_HALF_MASK) != 0U) &&
-        ((blackMask & H_TUNING_MARKER_X8_HALF_MASK) != 0U);
-    bool markerArmEligible = gH.distanceMm >= H_MARKER_ARM_DISTANCE_MM;
-    bool finishEligible =
-        (gH.stateMs >= H_TUNING_MARKER_MIN_TIME_MS) &&
-        (gH.distanceMm >= H_TUNING_MARKER_MIN_LAP_DISTANCE_MM) &&
-        (gH.distanceMm <= H_TUNING_MARKER_MAX_LAP_DISTANCE_MM);
+        ((blackMask & LINE_OUTER_MASK) != 0U);
+    bool markerArmEligible = gH.stateMs >= 1000U;
+    bool finishEligible = gH.stateMs >= H_TUNING_MARKER_MIN_TIME_MS;
 #else
     bool marker = track_active_count(blackMask) >=
         H_MARKER_MIN_ACTIVE_SENSORS;
@@ -487,6 +484,7 @@ bool h_mission_start(uint32_t nowMs, uint8_t blackMask)
     gH.settleMs = 0U;
     gH.markerArmed = false;
     gH.distanceMm = 0;
+    gH.finishPassCounts = 0U;
     gH.currentSpeedTicks = 0;
     gH.targetSpeedTicks = 0;
     gH.speedRampMs = speed_ramp_step_ms();
@@ -608,11 +606,19 @@ void h_mission_update_1ms(uint32_t nowMs, uint8_t blackMask)
     }
 
     if (gH.state == H_STATE_PASS_FINISH) {
-        int32_t passedMm = chassis_counts_to_um(abs_i32(averageCount -
-            gH.passStartCount)) / 1000;
+        uint32_t passedCounts = (uint32_t)abs_i32(averageCount -
+            gH.passStartCount);
+        uint32_t targetCounts;
 
-        if (passedMm >= ((gH.task == H_TASK_AB_CENTER_BALL) ?
-            H_TASK4_PASS_B_MM : H_FINISH_PASS_MM)) {
+        if ((gH.task == H_TASK_CAR_LAP_STOP) &&
+            (gH.finishPassCounts != 0U)) {
+            targetCounts = gH.finishPassCounts;
+        } else {
+            targetCounts = (uint32_t)chassis_mm_to_counts(
+                (gH.task == H_TASK_AB_CENTER_BALL) ?
+                    H_TASK4_PASS_B_MM : H_FINISH_PASS_MM);
+        }
+        if (passedCounts >= targetCounts) {
             begin_braking();
         }
         return;
@@ -634,6 +640,12 @@ void h_mission_update_1ms(uint32_t nowMs, uint8_t blackMask)
 #endif
     if (finishMarker) {
         if (gH.task == H_TASK_CAR_LAP_STOP) {
+            uint32_t lapCounts = (uint32_t)abs_i32(averageCount -
+                gH.startCount);
+
+            gH.finishPassCounts = (uint32_t)(((uint64_t)lapCounts *
+                H_FINISH_PASS_MM + (H_ROUTE_LAP_MM / 2)) /
+                H_ROUTE_LAP_MM);
             gH.passStartCount = averageCount;
             set_state(H_STATE_PASS_FINISH);
         } else {
@@ -643,7 +655,7 @@ void h_mission_update_1ms(uint32_t nowMs, uint8_t blackMask)
         }
     }
 #if H_TEMP_TRACK_TUNING_MODE
-    else if (gH.distanceMm > H_TUNING_MARKER_MAX_LAP_DISTANCE_MM) {
+    else if (gH.stateMs > H_TUNING_MARKER_MAX_TIME_MS) {
         fail_mission(H_FAULT_FINISH_MARKER);
     }
 #else
