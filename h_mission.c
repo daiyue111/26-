@@ -118,7 +118,7 @@ static uint8_t filter_line_mask(uint8_t sample)
     return filtered;
 }
 
-static bool route_curve_active(void)
+static bool route_speed_curve_active(void)
 {
     int32_t firstCurveEnd = H_ROUTE_AB_MM + H_ROUTE_HALF_CIRCLE_MM;
 
@@ -136,10 +136,28 @@ static bool route_curve_active(void)
 #endif
 }
 
+static bool route_line_curve_active(void)
+{
+    int32_t firstCurveEnd = H_ROUTE_AB_MM + H_ROUTE_HALF_CIRCLE_MM;
+
+#if H_TEMP_TRACK_TUNING_MODE
+    return ((gH.distanceMm >= (H_ROUTE_AB_MM -
+                H_TUNING_CURVE_STEER_LEAD_MM)) &&
+            (gH.distanceMm < (firstCurveEnd +
+                H_TUNING_CURVE_STEER_EXIT_MM))) ||
+        (gH.distanceMm >= (H_ROUTE_CD_END_MM -
+                H_TUNING_CURVE_STEER_LEAD_MM));
+#else
+    return ((gH.distanceMm >= (H_ROUTE_AB_MM - H_CURVE_STEER_LEAD_MM)) &&
+            (gH.distanceMm < firstCurveEnd)) ||
+        (gH.distanceMm >= (H_ROUTE_CD_END_MM - H_CURVE_STEER_LEAD_MM));
+#endif
+}
+
 static int16_t route_speed_target(void)
 {
 #if H_TEMP_TRACK_TUNING_MODE
-    bool routeCurve = route_curve_active();
+    bool routeCurve = route_speed_curve_active();
 
     if (gH.state == H_STATE_PASS_FINISH) {
         return H_FINISH_APPROACH_SPEED_TICKS;
@@ -263,7 +281,8 @@ static bool update_finish_marker(uint8_t blackMask)
     bool marker =
         (track_active_count(blackMask) >=
             H_TUNING_MARKER_MIN_ACTIVE_SENSORS) &&
-        ((blackMask & LINE_CENTER_MASK) != 0U);
+        ((blackMask & LINE_CENTER_MASK) != 0U) &&
+        ((blackMask & LINE_OUTER_MASK) != 0U);
     bool markerArmEligible = gH.distanceMm >= H_MARKER_ARM_DISTANCE_MM;
     bool finishEligible =
         (gH.stateMs >= H_TUNING_MARKER_MIN_TIME_MS) &&
@@ -570,7 +589,7 @@ void h_mission_update_1ms(uint32_t nowMs, uint8_t blackMask)
     gH.distanceMm = chassis_counts_to_um(abs_i32(averageCount -
         gH.startCount)) / 1000;
     blackMask = filter_line_mask(blackMask);
-    curveMode = route_curve_active();
+    curveMode = route_line_curve_active();
     h_line_control_update_1ms(&gH.line, blackMask, curveMode);
     update_running_safety(nowMs, blackMask);
     if (gH.state == H_STATE_FAULT) {
