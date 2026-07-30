@@ -41,6 +41,7 @@ void pid_reset(PidController *pid)
 
 int32_t pid_step_error(PidController *pid, int32_t error)
 {
+    int32_t candidateIntegral;
     int32_t derivative;
     int32_t output;
 
@@ -51,10 +52,18 @@ int32_t pid_step_error(PidController *pid, int32_t error)
     derivative = pid->initialized ? (error - pid->previousError) : 0;
     pid->initialized = 1U;
     pid->previousError = error;
-    pid->integral = clamp_i32(pid->integral + error, pid->integralLimit);
+    candidateIntegral = clamp_i32(pid->integral + error,
+        pid->integralLimit);
 
-    output = ((pid->kp * error) + (pid->ki * pid->integral) +
+    output = ((pid->kp * error) + (pid->ki * candidateIntegral) +
         (pid->kd * derivative)) / pid->scale;
+    if (((output > pid->outputLimit) && (error > 0)) ||
+        ((output < -pid->outputLimit) && (error < 0))) {
+        output = ((pid->kp * error) + (pid->ki * pid->integral) +
+            (pid->kd * derivative)) / pid->scale;
+    } else {
+        pid->integral = candidateIntegral;
+    }
     return clamp_i32(output, pid->outputLimit);
 }
 

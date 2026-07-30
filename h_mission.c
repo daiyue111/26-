@@ -21,12 +21,8 @@ typedef struct {
     uint16_t ballFaultMs;
     uint16_t settleMs;
     uint16_t speedRampMs;
-    uint16_t speedMediumErrorMs;
-    uint16_t speedLargeErrorMs;
-    uint16_t speedCenteredMs;
     uint8_t lineMaskHistory1;
     uint8_t lineMaskHistory2;
-    bool straightSlowMode;
     uint32_t startMs;
     uint32_t resultMs;
     int32_t startCount;
@@ -103,8 +99,13 @@ static void begin_braking(void)
 
 static uint16_t speed_ramp_step_ms(void)
 {
+#if H_TEMP_TRACK_TUNING_MODE
+    return (gH.task == H_TASK_CAR_LAP_STOP) ?
+        H_TUNING_H2_ACCEL_STEP_MS : H_TUNING_BALL_ACCEL_STEP_MS;
+#else
     return (gH.task == H_TASK_CAR_LAP_STOP) ? H_FAST_RAMP_STEP_MS :
         H_STABLE_RAMP_STEP_MS;
+#endif
 }
 
 static uint8_t filter_line_mask(uint8_t sample)
@@ -116,24 +117,6 @@ static uint8_t filter_line_mask(uint8_t sample)
     gH.lineMaskHistory2 = gH.lineMaskHistory1;
     gH.lineMaskHistory1 = sample;
     return filtered;
-}
-
-static bool route_speed_curve_active(void)
-{
-    int32_t firstCurveEnd = H_ROUTE_AB_MM + H_ROUTE_HALF_CIRCLE_MM;
-
-#if H_TEMP_TRACK_TUNING_MODE
-    return ((gH.distanceMm >= (H_ROUTE_AB_MM -
-                H_TUNING_CURVE_APPROACH_MM)) &&
-            (gH.distanceMm < (firstCurveEnd +
-                H_TUNING_CURVE_EXIT_MARGIN_MM))) ||
-        (gH.distanceMm >= (H_ROUTE_CD_END_MM -
-                H_TUNING_CURVE_APPROACH_MM));
-#else
-    return ((gH.distanceMm >= (H_ROUTE_AB_MM - H_CURVE_APPROACH_MM)) &&
-            (gH.distanceMm < firstCurveEnd)) ||
-        (gH.distanceMm >= (H_ROUTE_CD_END_MM - H_CURVE_APPROACH_MM));
-#endif
 }
 
 static bool route_line_curve_active(void)
@@ -157,7 +140,9 @@ static bool route_line_curve_active(void)
 static int16_t route_speed_target(void)
 {
 #if H_TEMP_TRACK_TUNING_MODE
-    bool routeCurve = route_speed_curve_active();
+    int16_t cruiseSpeed = (gH.task == H_TASK_CAR_LAP_STOP) ?
+        H_TUNING_H2_CRUISE_SPEED_TICKS :
+        H_TUNING_BALL_CRUISE_SPEED_TICKS;
 
     if (gH.state == H_STATE_PASS_FINISH) {
         return H_FINISH_APPROACH_SPEED_TICKS;
@@ -167,8 +152,7 @@ static int16_t route_speed_target(void)
             return H_LINE_LOST_SPEED_TICKS;
         }
     }
-    return routeCurve ? H_TUNING_CURVE_SPEED_TICKS :
-        H_TUNING_STRAIGHT_SPEED_TICKS;
+    return cruiseSpeed;
 #else
     bool fast = gH.task == H_TASK_CAR_LAP_STOP;
     int16_t straight = fast ? H_FAST_STRAIGHT_SPEED_TICKS :
@@ -197,24 +181,46 @@ static int16_t route_speed_target(void)
 #endif
 }
 
-static int16_t route_steering_feedforward(void)
+static int16_t curve_feedforward_x4(int32_t distanceMm,
+    int32_t curveStartMm, int32_t curveEndMm)
+{
+    int32_t entryStartMm = curveStartMm -
+        H_TUNING_CURVE_FF_ENTRY_RAMP_MM;
+    int32_t exitStartMm = curveEndMm -
+        H_TUNING_CURVE_FF_EXIT_RAMP_MM;
+
+    if ((distanceMm < entryStartMm) || (distanceMm >= curveEndMm)) {
+        return 0;
+    }
+    if (distanceMm < curveStartMm) {
+        return (int16_t)((H_TUNING_CURVE_STEERING_FF_X4 *
+            (distanceMm - entryStartMm)) /
+            H_TUNING_CURVE_FF_ENTRY_RAMP_MM);
+    }
+    if (distanceMm >= exitStartMm) {
+        return (int16_t)((H_TUNING_CURVE_STEERING_FF_X4 *
+            (curveEndMm - distanceMm)) /
+            H_TUNING_CURVE_FF_EXIT_RAMP_MM);
+    }
+    return H_TUNING_CURVE_STEERING_FF_X4;
+}
+
+static int16_t route_steering_feedforward_x4(void)
 {
 #if H_TEMP_TRACK_TUNING_MODE
     int32_t firstCurveEnd = H_ROUTE_AB_MM + H_ROUTE_HALF_CIRCLE_MM;
+    int16_t feedforwardX4;
 
-    if ((gH.task == H_TASK_AB_CENTER_BALL) ||
-        (gH.state == H_STATE_PASS_FINISH)) {
+    if (gH.task == H_TASK_AB_CENTER_BALL) {
         return 0;
     }
-    if (((gH.distanceMm >= (H_ROUTE_AB_MM -
-                H_TUNING_CURVE_STEER_LEAD_MM)) &&
-            (gH.distanceMm < (firstCurveEnd +
-                H_TUNING_CURVE_STEER_EXIT_MM))) ||
-        (gH.distanceMm >= (H_ROUTE_CD_END_MM -
-                H_TUNING_CURVE_STEER_LEAD_MM))) {
-        return H_TUNING_CURVE_STEERING_FF_TICKS;
+    feedforwardX4 = curve_feedforward_x4(gH.distanceMm,
+        H_ROUTE_AB_MM, firstCurveEnd);
+    if (feedforwardX4 != 0) {
+        return feedforwardX4;
     }
-    return 0;
+    return curve_feedforward_x4(gH.distanceMm, H_ROUTE_CD_END_MM,
+        H_ROUTE_LAP_MM);
 #else
     int32_t firstCurveEnd = H_ROUTE_AB_MM + H_ROUTE_HALF_CIRCLE_MM;
     int16_t feedforward;
@@ -232,7 +238,7 @@ static int16_t route_steering_feedforward(void)
         if (((gH.stateMs / SPEED_CONTROL_PERIOD_MS) & 1U) != 0U) {
             feedforward += H_CURVE_STEERING_EXTRA_TICKS;
         }
-        return feedforward;
+        return (int16_t)(feedforward * 4);
     }
     return 0;
 #endif
@@ -250,8 +256,6 @@ static void update_speed_ramp(void)
 #if H_TEMP_TRACK_TUNING_MODE
     if (gH.currentSpeedTicks > gH.targetSpeedTicks) {
         rampMs = H_TUNING_DECEL_STEP_MS;
-    } else {
-        rampMs = H_TUNING_ACCEL_STEP_MS;
     }
 #endif
     if (gH.currentSpeedTicks == gH.targetSpeedTicks) {
@@ -282,7 +286,8 @@ static bool update_finish_marker(uint8_t blackMask)
         (track_active_count(blackMask) >=
             H_TUNING_MARKER_MIN_ACTIVE_SENSORS) &&
         ((blackMask & LINE_CENTER_MASK) != 0U) &&
-        ((blackMask & LINE_OUTER_MASK) != 0U);
+        ((blackMask & H_TUNING_MARKER_X1_HALF_MASK) != 0U) &&
+        ((blackMask & H_TUNING_MARKER_X8_HALF_MASK) != 0U);
     bool markerArmEligible = gH.distanceMm >= H_MARKER_ARM_DISTANCE_MM;
     bool finishEligible =
         (gH.stateMs >= H_TUNING_MARKER_MIN_TIME_MS) &&
@@ -485,10 +490,6 @@ bool h_mission_start(uint32_t nowMs, uint8_t blackMask)
     gH.currentSpeedTicks = 0;
     gH.targetSpeedTicks = 0;
     gH.speedRampMs = speed_ramp_step_ms();
-    gH.speedMediumErrorMs = 0U;
-    gH.speedLargeErrorMs = 0U;
-    gH.speedCenteredMs = 0U;
-    gH.straightSlowMode = false;
     gH.lineMaskHistory1 = blackMask;
     gH.lineMaskHistory2 = blackMask;
     gH.accelerationMmps2 = 0;
@@ -589,7 +590,7 @@ void h_mission_update_1ms(uint32_t nowMs, uint8_t blackMask)
     gH.distanceMm = chassis_counts_to_um(abs_i32(averageCount -
         gH.startCount)) / 1000;
     blackMask = filter_line_mask(blackMask);
-    curveMode = route_line_curve_active();
+    curveMode = false;
     h_line_control_update_1ms(&gH.line, blackMask, curveMode);
     update_running_safety(nowMs, blackMask);
     if (gH.state == H_STATE_FAULT) {
@@ -599,8 +600,7 @@ void h_mission_update_1ms(uint32_t nowMs, uint8_t blackMask)
 
     update_speed_ramp();
     ball_control_update_1ms(nowMs, gH.accelerationMmps2);
-    h_line_control_command(&gH.line, gH.currentSpeedTicks,
-        route_steering_feedforward());
+    h_line_control_command_pwm(&gH.line, gH.currentSpeedTicks);
     motion_control_update_1ms();
     if (motion_control_get_fault() != MOTION_FAULT_NONE) {
         fail_mission(H_FAULT_MOTION);
@@ -634,7 +634,8 @@ void h_mission_update_1ms(uint32_t nowMs, uint8_t blackMask)
 #endif
     if (finishMarker) {
         if (gH.task == H_TASK_CAR_LAP_STOP) {
-            begin_braking();
+            gH.passStartCount = averageCount;
+            set_state(H_STATE_PASS_FINISH);
         } else {
             gH.resultMs = nowMs - gH.startMs;
             gH.passStartCount = averageCount;

@@ -7,9 +7,12 @@
 
 typedef struct {
     bool enabled;
+    bool directPwmEnabled;
     uint8_t periodMs;
-    int16_t leftTarget;
-    int16_t rightTarget;
+    int16_t leftTargetX4;
+    int16_t rightTargetX4;
+    int16_t leftPwmTarget;
+    int16_t rightPwmTarget;
     int16_t leftSpeed;
     int16_t rightSpeed;
     int16_t leftPwm;
@@ -45,15 +48,34 @@ static int32_t abs_i32(int32_t value)
     return (value < 0) ? -value : value;
 }
 
-static int32_t speed_feedforward(int16_t target)
+static void set_speed_targets_x4(int16_t leftX4, int16_t rightX4)
 {
-    if (target > 0) {
-        return SPEED_STATIC_FRICTION_PWM +
-            (int32_t)target * SPEED_FEEDFORWARD_PER_TICK;
+    int16_t newLeftX4 = (int16_t)clamp_i32(leftX4,
+        WHEEL_SPEED_TARGET_LIMIT * 4);
+    int16_t newRightX4 = (int16_t)clamp_i32(rightX4,
+        WHEEL_SPEED_TARGET_LIMIT * 4);
+
+    if ((newLeftX4 == 0) || ((newLeftX4 > 0) !=
+            (gMotion.leftTargetX4 > 0))) {
+        pid_reset(&gMotion.leftPid);
     }
-    if (target < 0) {
+    if ((newRightX4 == 0) || ((newRightX4 > 0) !=
+            (gMotion.rightTargetX4 > 0))) {
+        pid_reset(&gMotion.rightPid);
+    }
+    gMotion.leftTargetX4 = newLeftX4;
+    gMotion.rightTargetX4 = newRightX4;
+}
+
+static int32_t speed_feedforward_x4(int16_t targetX4)
+{
+    if (targetX4 > 0) {
+        return SPEED_STATIC_FRICTION_PWM +
+            ((int32_t)targetX4 * SPEED_FEEDFORWARD_PER_TICK) / 4;
+    }
+    if (targetX4 < 0) {
         return -SPEED_STATIC_FRICTION_PWM +
-            (int32_t)target * SPEED_FEEDFORWARD_PER_TICK;
+            ((int32_t)targetX4 * SPEED_FEEDFORWARD_PER_TICK) / 4;
     }
     return 0;
 }
@@ -82,15 +104,19 @@ static void update_fault_timer(bool condition, uint16_t *timerMs)
 
 static void motion_control_check_feedback(void)
 {
-    bool leftCommanded = (gMotion.leftTarget != 0) &&
+    int16_t leftCommand = gMotion.directPwmEnabled ?
+        gMotion.leftPwmTarget : gMotion.leftTargetX4;
+    int16_t rightCommand = gMotion.directPwmEnabled ?
+        gMotion.rightPwmTarget : gMotion.rightTargetX4;
+    bool leftCommanded = (leftCommand != 0) &&
         (abs_i32(gMotion.leftPwm) >= ENCODER_WATCHDOG_MIN_PWM);
-    bool rightCommanded = (gMotion.rightTarget != 0) &&
+    bool rightCommanded = (rightCommand != 0) &&
         (abs_i32(gMotion.rightPwm) >= ENCODER_WATCHDOG_MIN_PWM);
-    bool leftWrongDirection = ((gMotion.leftTarget > 0) &&
-        (gMotion.leftSpeed < 0)) || ((gMotion.leftTarget < 0) &&
+    bool leftWrongDirection = ((leftCommand > 0) &&
+        (gMotion.leftSpeed < 0)) || ((leftCommand < 0) &&
         (gMotion.leftSpeed > 0));
-    bool rightWrongDirection = ((gMotion.rightTarget > 0) &&
-        (gMotion.rightSpeed < 0)) || ((gMotion.rightTarget < 0) &&
+    bool rightWrongDirection = ((rightCommand > 0) &&
+        (gMotion.rightSpeed < 0)) || ((rightCommand < 0) &&
         (gMotion.rightSpeed > 0));
 
     update_fault_timer(leftCommanded && (gMotion.leftSpeed == 0),
@@ -130,10 +156,10 @@ void motion_control_init(void)
 {
     encoder_init();
     pid_init(&gMotion.leftPid, SPEED_PID_KP, SPEED_PID_KI, SPEED_PID_KD,
-        SPEED_PID_SCALE, SPEED_PID_INTEGRAL_LIMIT,
+        SPEED_PID_SCALE * 4, SPEED_PID_INTEGRAL_LIMIT * 4,
         SPEED_PID_OUTPUT_LIMIT);
     pid_init(&gMotion.rightPid, SPEED_PID_KP, SPEED_PID_KI, SPEED_PID_KD,
-        SPEED_PID_SCALE, SPEED_PID_INTEGRAL_LIMIT,
+        SPEED_PID_SCALE * 4, SPEED_PID_INTEGRAL_LIMIT * 4,
         SPEED_PID_OUTPUT_LIMIT);
     motion_control_reset();
 }
@@ -142,8 +168,11 @@ void motion_control_enable(bool enable)
 {
     gMotion.enabled = enable;
     if (!enable) {
-        gMotion.leftTarget = 0;
-        gMotion.rightTarget = 0;
+        gMotion.directPwmEnabled = false;
+        gMotion.leftTargetX4 = 0;
+        gMotion.rightTargetX4 = 0;
+        gMotion.leftPwmTarget = 0;
+        gMotion.rightPwmTarget = 0;
         gMotion.leftPwm = 0;
         gMotion.rightPwm = 0;
         pid_reset(&gMotion.leftPid);
@@ -159,9 +188,12 @@ void motion_control_reset(void)
     encoder_reset();
     counts = encoder_get_counts();
     gMotion.enabled = false;
+    gMotion.directPwmEnabled = false;
     gMotion.periodMs = 0U;
-    gMotion.leftTarget = 0;
-    gMotion.rightTarget = 0;
+    gMotion.leftTargetX4 = 0;
+    gMotion.rightTargetX4 = 0;
+    gMotion.leftPwmTarget = 0;
+    gMotion.rightPwmTarget = 0;
     gMotion.leftSpeed = 0;
     gMotion.rightSpeed = 0;
     gMotion.leftPwm = 0;
@@ -182,20 +214,44 @@ void motion_control_reset(void)
 
 void motion_control_set_speed_targets(int16_t left, int16_t right)
 {
-    int16_t newLeft = (int16_t)clamp_i32(left,
-        WHEEL_SPEED_TARGET_LIMIT);
-    int16_t newRight = (int16_t)clamp_i32(right,
-        WHEEL_SPEED_TARGET_LIMIT);
-
-    if ((newLeft == 0) || ((newLeft > 0) != (gMotion.leftTarget > 0))) {
+    if (gMotion.directPwmEnabled) {
         pid_reset(&gMotion.leftPid);
-    }
-    if ((newRight == 0) || ((newRight > 0) !=
-            (gMotion.rightTarget > 0))) {
         pid_reset(&gMotion.rightPid);
     }
-    gMotion.leftTarget = newLeft;
-    gMotion.rightTarget = newRight;
+    gMotion.directPwmEnabled = false;
+    set_speed_targets_x4((int16_t)(left * 4), (int16_t)(right * 4));
+}
+
+void motion_control_set_forward_steering_x4(int16_t forward,
+    int16_t steeringX4)
+{
+    int16_t forwardX4;
+    int16_t limitX4 = WHEEL_SPEED_TARGET_LIMIT * 4;
+
+    if (gMotion.directPwmEnabled) {
+        pid_reset(&gMotion.leftPid);
+        pid_reset(&gMotion.rightPid);
+    }
+    gMotion.directPwmEnabled = false;
+    forwardX4 = (int16_t)(clamp_i32(forward,
+        WHEEL_SPEED_TARGET_LIMIT) * 4);
+    steeringX4 = (int16_t)clamp_i32(steeringX4,
+        limitX4 - abs_i32(forwardX4));
+    set_speed_targets_x4((int16_t)(forwardX4 - steeringX4),
+        (int16_t)(forwardX4 + steeringX4));
+}
+
+void motion_control_set_pwm_targets(int16_t leftPwm, int16_t rightPwm)
+{
+    if (!gMotion.directPwmEnabled) {
+        pid_reset(&gMotion.leftPid);
+        pid_reset(&gMotion.rightPid);
+    }
+    gMotion.directPwmEnabled = true;
+    gMotion.leftPwmTarget = (int16_t)clamp_i32(leftPwm,
+        SPEED_PWM_HARD_LIMIT);
+    gMotion.rightPwmTarget = (int16_t)clamp_i32(rightPwm,
+        SPEED_PWM_HARD_LIMIT);
 }
 
 void motion_control_update_1ms(void)
@@ -227,17 +283,26 @@ void motion_control_update_1ms(void)
         return;
     }
 
-    leftOutput = (gMotion.leftTarget == 0) ? 0 :
-        pid_step(&gMotion.leftPid, gMotion.leftTarget,
-            gMotion.leftSpeed) + speed_feedforward(gMotion.leftTarget);
-    rightOutput = (gMotion.rightTarget == 0) ? 0 :
-        pid_step(&gMotion.rightPid, gMotion.rightTarget,
-            gMotion.rightSpeed) + speed_feedforward(gMotion.rightTarget);
+    if (gMotion.directPwmEnabled) {
+        leftOutput = gMotion.leftPwmTarget;
+        rightOutput = gMotion.rightPwmTarget;
+    } else {
+        leftOutput = (gMotion.leftTargetX4 == 0) ? 0 :
+            pid_step(&gMotion.leftPid, gMotion.leftTargetX4,
+                (int32_t)gMotion.leftSpeed * 4) +
+            speed_feedforward_x4(gMotion.leftTargetX4);
+        rightOutput = (gMotion.rightTargetX4 == 0) ? 0 :
+            pid_step(&gMotion.rightPid, gMotion.rightTargetX4,
+                (int32_t)gMotion.rightSpeed * 4) +
+            speed_feedforward_x4(gMotion.rightTargetX4);
+    }
     leftOutput = clamp_i32(leftOutput, SPEED_PWM_HARD_LIMIT);
     rightOutput = clamp_i32(rightOutput, SPEED_PWM_HARD_LIMIT);
-    gMotion.leftPwm = (gMotion.leftTarget == 0) ? 0 :
+    gMotion.leftPwm = ((gMotion.directPwmEnabled ?
+            gMotion.leftPwmTarget : gMotion.leftTargetX4) == 0) ? 0 :
         slew_pwm(gMotion.leftPwm, leftOutput);
-    gMotion.rightPwm = (gMotion.rightTarget == 0) ? 0 :
+    gMotion.rightPwm = ((gMotion.directPwmEnabled ?
+            gMotion.rightPwmTarget : gMotion.rightTargetX4) == 0) ? 0 :
         slew_pwm(gMotion.rightPwm, rightOutput);
     motor_set_signed(gMotion.leftPwm, gMotion.rightPwm);
 }

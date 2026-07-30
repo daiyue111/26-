@@ -21,7 +21,7 @@ bool control_scheduler_take_1ms(void)
     bool ready;
 
     __disable_irq();
-    ready = gPendingTicks != 0U;
+			ready = gPendingTicks != 0U;
     if (ready) {
         gPendingTicks--;
     }
