@@ -48,23 +48,66 @@ Until the dedicated selector hardware is assigned, the production firmware
 must default to H2 and preserve the verified single-press H2 behavior. There
 is no software warmup lock, click counting, or short/long-press overloading.
 
-## Runtime Layers
+## Production Runtime
 
 ```text
 main / 1 ms scheduler
-  competition_app                 selection, start, dispatch, LCD only
-    task2                         one lap and precise stop at A
-    task3                         stationary +50 mm to -50 mm ball motion
-    task4                         A to B while holding ball at center
-    task5                         one lap while holding ball at center
-    task6                         one lap while holding initial ball position
+  competition_runtime             lifecycle and selected-task dispatch
+    competition_selector          build target or dedicated selector input
+    competition_registry          task-number to task implementation mapping
+    competition_ui                START debounce, LCD, result and fault LEDs
+    competition_safety            the single all-actuator stop path
+    selected task
+      task2                       frozen one-lap precise-stop implementation
+      task3                       stationary +50 mm to -50 mm ball motion
+      task4                       A to B while holding ball at center
+      task5                       one lap while holding ball at center
+      task6                       one lap while holding initial ball position
 
 shared services
-  route sensor math, ball estimator, timer, safety stop
+  H2 frozen chassis control
+  loaded chassis route control for H4-H6
+  ball estimator, ball position loop and rod angle loop
 
 hardware drivers
   motor, encoder, track, K230 UART, angle ADC, stepper timer, LCD
 ```
+
+The production `main` calls only `competition_runtime`. `car_app`,
+`competition_app`, `h_mission`, the 24H square mission, and calibration test
+programs are legacy/diagnostic sources and are not members of the production
+Keil target. They must never be called from a competition task.
+
+## File Ownership
+
+| Module | Sole responsibility |
+| --- | --- |
+| `competition_runtime` | READY/RUNNING/COMPLETE/FAULT lifecycle |
+| `competition_registry` | Resolve a task number to one task object |
+| `competition_selector` | Read the compile-time or physical task selection |
+| `competition_ui` | START event, task/result display, status indication |
+| `competition_safety` | Stop wheels, ball actuator and switched outputs |
+| `taskN` | Question-specific state machine and completion condition |
+| `taskN_config` | Parameters owned only by that question |
+
+The runtime does not contain line following, marker detection, ball control,
+or actuator algorithms. The UI cannot start motors. A task cannot select or
+call another task. Only the safety module may override every actuator.
+
+## Control Composition
+
+| Task | Chassis controller | Ball controller | Completion |
+| --- | --- | --- | --- |
+| H2 | Frozen H2 controller | Disabled | Stop at A |
+| H3 | Wheels locked | +50 mm then -50 mm trajectory | Ball settled |
+| H4 | Loaded A-to-B profile | Hold 0 mm | Pass B |
+| H5 | Loaded one-lap profile | Hold 0 mm | Return to A |
+| H6 | Loaded one-lap profile | Hold captured START position | Return to A |
+
+H2 remains its own frozen control implementation. H4-H6 may share a loaded
+chassis algorithm, but each task supplies an immutable task-local profile.
+The rod angle inner loop is verified and frozen before H3 tuning; the ball
+position loop is verified and frozen before H4 integration.
 
 ## Task Isolation Contract
 
@@ -93,7 +136,7 @@ task's tuned constants.
 
 ## Build Targets
 
-The Keil project will provide these build modes from the same source files:
+The production source supports these build modes from the same task files:
 
 - `H2_ONLY`, `H3_ONLY`, `H4_ONLY`, `H5_ONLY`, `H6_ONLY`
 - `COMPETITION_ALL`
@@ -102,6 +145,10 @@ An ONLY target fixes one task at compile time and bypasses task selection,
 but still runs that task's production module. `COMPETITION_ALL` adds only the
 selector and dispatcher. There are no separate bench implementations to
 merge later.
+
+`competition_build.h` currently selects `H2_ONLY`. Until a task is registered,
+selecting its ONLY build deliberately fails at compile time. This prevents an
+incomplete task image from reaching the car.
 
 ## Frozen H2 Contract
 

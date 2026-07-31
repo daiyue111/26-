@@ -390,50 +390,20 @@
               <FilePath>empty_mspm0g3507.c</FilePath>
             </File>
             <File>
-              <FileName>car_app.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>car_app.c</FilePath>
-            </File>
-            <File>
-              <FileName>car_app.h</FileName>
+              <FileName>competition_build.h</FileName>
               <FileType>5</FileType>
-              <FilePath>car_app.h</FilePath>
-            </File>
-            <File>
-              <FileName>competition_app.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>competition_app.c</FilePath>
-            </File>
-            <File>
-              <FileName>competition_app.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>competition_app.h</FilePath>
-            </File>
-            <File>
-              <FileName>competition_task.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>competition_task.h</FilePath>
-            </File>
-            <File>
-              <FileName>task2.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>task2.c</FilePath>
-            </File>
-            <File>
-              <FileName>task2.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>task2.h</FilePath>
-            </File>
-            <File>
-              <FileName>task2_config.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>task2_config.h</FilePath>
+              <FilePath>competition_build.h</FilePath>
             </File>
             <File>
               <FileName>app_config.h</FileName>
               <FileType>5</FileType>
               <FilePath>app_config.h</FilePath>
             </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Documentation</GroupName>
+          <Files>
             <File>
               <FileName>README.md</FileName>
               <FileType>5</FileType>
@@ -462,53 +432,88 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Missions</GroupName>
+          <GroupName>Competition Runtime</GroupName>
           <Files>
             <File>
-              <FileName>h_mission.c</FileName>
+              <FileName>competition_runtime.c</FileName>
               <FileType>1</FileType>
-              <FilePath>h_mission.c</FilePath>
+              <FilePath>competition_runtime.c</FilePath>
             </File>
             <File>
-              <FileName>h_mission.h</FileName>
+              <FileName>competition_runtime.h</FileName>
               <FileType>5</FileType>
-              <FilePath>h_mission.h</FilePath>
+              <FilePath>competition_runtime.h</FilePath>
             </File>
             <File>
-              <FileName>square_mission.c</FileName>
+              <FileName>competition_registry.c</FileName>
               <FileType>1</FileType>
-              <FilePath>square_mission.c</FilePath>
+              <FilePath>competition_registry.c</FilePath>
             </File>
             <File>
-              <FileName>square_mission.h</FileName>
+              <FileName>competition_registry.h</FileName>
               <FileType>5</FileType>
-              <FilePath>square_mission.h</FilePath>
+              <FilePath>competition_registry.h</FilePath>
             </File>
             <File>
-              <FileName>chassis_calibration.c</FileName>
+              <FileName>competition_selector.c</FileName>
               <FileType>1</FileType>
-              <FilePath>chassis_calibration.c</FilePath>
+              <FilePath>competition_selector.c</FilePath>
             </File>
             <File>
-              <FileName>chassis_calibration.h</FileName>
+              <FileName>competition_selector.h</FileName>
               <FileType>5</FileType>
-              <FilePath>chassis_calibration.h</FilePath>
+              <FilePath>competition_selector.h</FilePath>
+            </File>
+            <File>
+              <FileName>competition_safety.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>competition_safety.c</FilePath>
+            </File>
+            <File>
+              <FileName>competition_safety.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>competition_safety.h</FilePath>
+            </File>
+            <File>
+              <FileName>competition_ui.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>competition_ui.c</FilePath>
+            </File>
+            <File>
+              <FileName>competition_ui.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>competition_ui.h</FilePath>
+            </File>
+            <File>
+              <FileName>competition_task.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>competition_task.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Tasks</GroupName>
+          <Files>
+            <File>
+              <FileName>task2.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>task2.c</FilePath>
+            </File>
+            <File>
+              <FileName>task2.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>task2.h</FilePath>
+            </File>
+            <File>
+              <FileName>task2_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>task2_config.h</FilePath>
             </File>
           </Files>
         </Group>
         <Group>
           <GroupName>Control</GroupName>
           <Files>
-            <File>
-              <FileName>h_line_control.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>h_line_control.c</FilePath>
-            </File>
-            <File>
-              <FileName>h_line_control.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>h_line_control.h</FilePath>
-            </File>
             <File>
               <FileName>ball_control.c</FileName>
               <FileType>1</FileType>
@@ -518,26 +523,6 @@
               <FileName>ball_control.h</FileName>
               <FileType>5</FileType>
               <FilePath>ball_control.h</FilePath>
-            </File>
-            <File>
-              <FileName>line_follow.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>line_follow.c</FilePath>
-            </File>
-            <File>
-              <FileName>line_follow.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>line_follow.h</FilePath>
-            </File>
-            <File>
-              <FileName>line_speed_control.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>line_speed_control.c</FilePath>
-            </File>
-            <File>
-              <FileName>line_speed_control.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>line_speed_control.h</FilePath>
             </File>
             <File>
               <FileName>motion_control.c</FileName>
@@ -588,16 +573,6 @@
               <FileName>chassis_config.h</FileName>
               <FileType>5</FileType>
               <FilePath>chassis_config.h</FilePath>
-            </File>
-            <File>
-              <FileName>calibration_store.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>calibration_store.c</FilePath>
-            </File>
-            <File>
-              <FileName>calibration_store.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>calibration_store.h</FilePath>
             </File>
           </Files>
         </Group>
