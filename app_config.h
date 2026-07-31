@@ -15,6 +15,7 @@
 #define APP_MODE_H2026 6U
 #define APP_RUN_MODE APP_MODE_H2026
 #define APP_ENABLE_LCD 1U
+#define COMPETITION_USE_INDEPENDENT_TASKS 1U
 
 /* Optional X42S closed-loop stepper driver; disabled to preserve car pins. */
 #define APP_ENABLE_ZDT_X42S 0U

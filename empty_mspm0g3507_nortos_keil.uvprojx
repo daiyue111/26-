@@ -400,6 +400,36 @@
               <FilePath>car_app.h</FilePath>
             </File>
             <File>
+              <FileName>competition_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>competition_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>competition_app.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>competition_app.h</FilePath>
+            </File>
+            <File>
+              <FileName>competition_task.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>competition_task.h</FilePath>
+            </File>
+            <File>
+              <FileName>task2.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>task2.c</FilePath>
+            </File>
+            <File>
+              <FileName>task2.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>task2.h</FilePath>
+            </File>
+            <File>
+              <FileName>task2_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>task2_config.h</FilePath>
+            </File>
+            <File>
               <FileName>app_config.h</FileName>
               <FileType>5</FileType>
               <FilePath>app_config.h</FilePath>

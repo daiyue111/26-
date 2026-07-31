@@ -8,6 +8,7 @@
 #include "chassis_calibration.h"
 #include "chassis_model.h"
 #include "control_scheduler.h"
+#include "competition_app.h"
 #include "encoder.h"
 #include "h_mission.h"
 #include "imu.h"
@@ -150,6 +151,35 @@ static bool h_fault_led_on(uint32_t nowMs, HMissionFault fault)
         ((phase % H_FAULT_LED_SLOT_MS) < H_FAULT_LED_ON_MS);
 }
 
+static uint8_t competition_fault_display_code(CompetitionTaskFault fault)
+{
+    switch (fault) {
+        case COMPETITION_FAULT_LINE_LOST:
+            return 1U;
+        case COMPETITION_FAULT_MOTION:
+            return 2U;
+        case COMPETITION_FAULT_TIMEOUT:
+            return 3U;
+        case COMPETITION_FAULT_FINISH_MARKER:
+            return 4U;
+        case COMPETITION_FAULT_NONE:
+            return 0U;
+        default:
+            return 5U;
+    }
+}
+
+static bool competition_fault_led_on(uint32_t nowMs,
+    CompetitionTaskFault fault)
+{
+    uint8_t pulses = competition_fault_display_code(fault);
+    uint16_t phase = (uint16_t)(nowMs % H_FAULT_LED_CYCLE_MS);
+
+    return (pulses != 0U) &&
+        ((phase / H_FAULT_LED_SLOT_MS) < pulses) &&
+        ((phase % H_FAULT_LED_SLOT_MS) < H_FAULT_LED_ON_MS);
+}
+
 static void sync_power_switch_telemetry(void)
 {
     gPowerSwitchDutyPercent = power_switch_get_duty();
@@ -213,6 +243,16 @@ static void sync_square_telemetry(void)
 
 static void sync_h_telemetry(uint32_t nowMs)
 {
+#if COMPETITION_USE_INDEPENDENT_TASKS
+    gHTask = competition_app_get_task();
+    gHState = (uint8_t)competition_app_get_state();
+    gHFault = (uint8_t)competition_app_get_fault();
+    gHElapsedMs = competition_app_get_elapsed_ms(nowMs);
+    gHResultMs = competition_app_get_result_ms();
+    gHDistanceMm = competition_app_get_distance_mm();
+    gHSpeedCommandTicks = competition_app_get_speed_command();
+    gHAccelerationMmps2 = 0;
+#else
     gHTask = h_mission_get_task();
     gHState = (uint8_t)h_mission_get_state();
     gHFault = (uint8_t)h_mission_get_fault();
@@ -221,6 +261,7 @@ static void sync_h_telemetry(uint32_t nowMs)
     gHDistanceMm = h_mission_get_distance_mm();
     gHSpeedCommandTicks = h_mission_get_speed_command_ticks();
     gHAccelerationMmps2 = h_mission_get_acceleration_mmps2();
+#endif
     gHBallTargetTenthMm = ball_control_get_target_tenth_mm();
     gHBallPositionTenthMm = ball_control_get_position_tenth_mm();
     gHBallVelocityTenthMmps = ball_control_get_velocity_tenth_mmps();
@@ -231,9 +272,19 @@ static void sync_h_telemetry(uint32_t nowMs)
     gHVisionGoodFrames = ball_vision_get_good_frame_count();
     gHVisionCrcErrors = ball_vision_get_crc_error_count();
     gSchedulerOverruns = control_scheduler_get_overrun_count();
-    gTrackError = h_mission_get_line_error();
+    gTrackError =
+#if COMPETITION_USE_INDEPENDENT_TASKS
+        competition_app_get_line_error();
+#else
+        h_mission_get_line_error();
+#endif
     gTrackDerivative = 0;
-    gGyroCorrectionTicks = h_mission_get_line_correction();
+    gGyroCorrectionTicks =
+#if COMPETITION_USE_INDEPENDENT_TASKS
+        competition_app_get_line_correction();
+#else
+        h_mission_get_line_correction();
+#endif
     gEncoderLeftCount = motion_control_get_left_count();
     gEncoderRightCount = motion_control_get_right_count();
     gEncoderLeftSpeed = motion_control_get_left_speed();
@@ -298,7 +349,12 @@ static void start_line_following(void)
 
     motor_safe_stop();
     gApp.hResultDisplayed = false;
+#if COMPETITION_USE_INDEPENDENT_TASKS
+    gApp.running = competition_app_start(control_scheduler_now_ms(),
+        blackMask);
+#else
     gApp.running = h_mission_start(control_scheduler_now_ms(), blackMask);
+#endif
 #else
     bool imuReady;
 
@@ -349,7 +405,11 @@ static void handle_start_key(bool pressed)
 #if APP_RUN_MODE == APP_MODE_SQUARE_3LOOP
                 square_mission_stop();
 #elif APP_RUN_MODE == APP_MODE_H2026
+#if COMPETITION_USE_INDEPENDENT_TASKS
+                competition_app_stop();
+#else
                 h_mission_stop();
+#endif
 #else
                 motor_safe_stop();
 #endif
@@ -633,13 +693,18 @@ static void run_h2026_step(void)
     uint8_t rawMask = track_read_raw_mask();
     uint8_t blackMask = track_black_mask(rawMask);
     uint32_t nowMs = control_scheduler_now_ms();
+#if COMPETITION_USE_INDEPENDENT_TASKS
+    CompetitionTaskState state;
+#else
     HMissionState state;
+#endif
 
     gStartButtonPressed = pressed ? 1U : 0U;
     gTrackRawMask = rawMask;
     gTrackBlackMask = blackMask;
     gTrackActiveCount = track_active_count(blackMask);
 
+#if !COMPETITION_USE_INDEPENDENT_TASKS
     if (!gApp.running) {
         if (gHRequestedTask != h_mission_get_task()) {
             (void)h_mission_set_task(gHRequestedTask);
@@ -651,27 +716,53 @@ static void run_h2026_step(void)
                 gHRequestedTargetTenthMm);
         }
     }
+#endif
     handle_start_key(pressed);
+#if COMPETITION_USE_INDEPENDENT_TASKS
+    competition_app_update_1ms(nowMs, blackMask);
+    state = competition_app_get_state();
+    if ((state == COMPETITION_TASK_COMPLETE) ||
+        (state == COMPETITION_TASK_FAULT)) {
+        gApp.running = false;
+    }
+#else
     h_mission_update_1ms(nowMs, blackMask);
     state = h_mission_get_state();
     if ((state == H_STATE_COMPLETE) || (state == H_STATE_FAULT)) {
         gApp.running = false;
     }
+#endif
 #if APP_ENABLE_LCD
+#if COMPETITION_USE_INDEPENDENT_TASKS
+    if ((state == COMPETITION_TASK_COMPLETE) && !gApp.hResultDisplayed) {
+        lcd_display_show_time_ms(competition_app_get_result_ms());
+        gApp.hResultDisplayed = true;
+    }
+#else
     if ((state == H_STATE_COMPLETE) && !gApp.hResultDisplayed) {
         lcd_display_show_time_ms(h_mission_get_result_ms());
         gApp.hResultDisplayed = true;
     }
 #endif
+#endif
 
     gLineRunning = gApp.running ? 1U : 0U;
     app_debug_led_set(gApp.running);
+#if COMPETITION_USE_INDEPENDENT_TASKS
+    if (state == COMPETITION_TASK_FAULT) {
+        app_gyro_led_set(competition_fault_led_on(nowMs,
+            competition_app_get_fault()));
+    } else {
+        app_gyro_led_set(state == COMPETITION_TASK_COMPLETE);
+    }
+#else
     if (state == H_STATE_FAULT) {
         app_gyro_led_set(h_fault_led_on(nowMs, h_mission_get_fault()));
     } else {
         app_gyro_led_set((state == H_STATE_COMPLETE) ||
             ball_control_is_vision_healthy());
     }
+#endif
     sync_h_telemetry(nowMs);
 }
 #elif (APP_RUN_MODE == APP_MODE_LINE_GYRO) || \
@@ -758,7 +849,11 @@ void car_app_init(void)
     power_switch_init();
     motion_control_init();
     square_mission_init();
+#if COMPETITION_USE_INDEPENDENT_TASKS
+    competition_app_init();
+#else
     h_mission_init();
+#endif
 #if APP_ENABLE_LCD
     lcd_display_init();
     lcd_display_show_time_ms(0U);
